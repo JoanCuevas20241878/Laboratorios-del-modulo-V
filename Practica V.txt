@@ -163,7 +163,87 @@ vrrp_instance VI_1 {
         10.0.0.32
     }
 
+INSTALACIÓN Y CONFIGURACIÓN DE PACEMAKER EN ORACLE LINUX 9 (OL9)
+=================================================================
 
+NODO 1: 10.0.0.11
+NODO 2: 10.0.0.14
+USUARIO DEL CLÚSTER: hacluster
+CONTRASEÑA: 12345 (puedes cambiarla si lo deseas)
+
+-----------------------------------------------------------------
+1) INSTALAR LOS PAQUETES (EN AMBOS NODOS)
+-----------------------------------------------------------------
+sudo dnf --enablerepo=ol9_addons install -y pacemaker pcs fence-agents-ipmilan
+
+-----------------------------------------------------------------
+2) HABILITAR E INICIAR EL SERVICIO pcsd (EN AMBOS NODOS)
+-----------------------------------------------------------------
+sudo systemctl enable --now pcsd
+
+-----------------------------------------------------------------
+3) CONFIGURAR FIREWALL (EN AMBOS NODOS)
+-----------------------------------------------------------------
+sudo firewall-cmd --permanent --add-service=high-availability
+sudo firewall-cmd --reload
+
+-----------------------------------------------------------------
+4) CONFIGURAR USUARIO DEL CLUSTER (EN AMBOS NODOS)
+-----------------------------------------------------------------
+sudo passwd hacluster
+# Asignar la contraseña: 12345
+
+-----------------------------------------------------------------
+5) AUTENTICACIÓN ENTRE NODOS (SOLO EN UNO DE LOS NODOS)
+-----------------------------------------------------------------
+sudo pcs host auth 10.0.0.11 10.0.0.14 -u hacluster -p 12345
+
+-----------------------------------------------------------------
+6) CREAR EL CLUSTER (SOLO EN UNO DE LOS NODOS)
+-----------------------------------------------------------------
+sudo pcs cluster setup micluster 10.0.0.11 10.0.0.14
+
+-----------------------------------------------------------------
+7) INICIAR Y HABILITAR EL CLUSTER (SOLO EN UNO DE LOS NODOS)
+-----------------------------------------------------------------
+sudo pcs cluster start --all
+sudo pcs cluster enable --all
+
+-----------------------------------------------------------------
+8) VERIFICAR ESTADO DEL CLUSTER
+-----------------------------------------------------------------
+sudo pcs status
+
+-----------------------------------------------------------------
+9) CREAR RECURSO DE IP FLOTANTE (SOLO EN UNO DE LOS NODOS)
+-----------------------------------------------------------------
+sudo pcs resource create Flotanip ocf:heartbeat:IPaddr2 ip=10.0.0.200 cidr_netmask=24 op monitor interval=30s
+
+-----------------------------------------------------------------
+10) CONFIGURAR STONITH PARA PERMITIR RECURSOS CRÍTICOS
+-----------------------------------------------------------------
+sudo pcs stonith create suicido fence_ipmilan ipaddr=10.0.0.200 login=admin passwd=secret
+sudo pcs property set stonith-enabled=true
+
+-----------------------------------------------------------------
+11) VERIFICAR ESTADO DE NUEVO
+-----------------------------------------------------------------
+sudo pcs status
+
+-----------------------------------------------------------------
+12) PRUEBA DE PING A LA IP FLOTANTE (DESDE TU MÁQUINA HOST)
+-----------------------------------------------------------------
+ping 10.0.0.200
+
+-----------------------------------------------------------------
+13) REINICIAR UN NODO PARA PROBAR FAILOVER
+-----------------------------------------------------------------
+sudo reboot
+# En el nodo que queda activo:
+sudo pcs status
+
+-----------------------------------------------------------------
+FIN DEL PROCESO ✅
 
 
 
